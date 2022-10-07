@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "lesson-27-django"
+version = "0.1.0"
+description = ""
+authors = ["Armen-ar <armen.aruts1967@gmail.com>"]
+readme = "README.md"
+packages = [{include = "lesson_27_django"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Django = "^4.1.1"
+psycopg2 = "^2.9.3"
+Pillow = "^9.2.0"
+djangorestframework = "^3.14.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
