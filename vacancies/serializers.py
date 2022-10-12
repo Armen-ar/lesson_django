@@ -58,8 +58,9 @@ class VacancyCreateSerializer(serializers.ModelSerializer):
     """метод вытаскивает все skills, прячет их от валидатора, а затем даёт пройтись по ним самостоятельно"""
 
     def is_valid(self, *, raise_exception=False):
-        self._skills = self.initial_data.pop('skills')  # из тех данных, которые прислал пользователь self.initial_data
-        # выбирает по ключу 'skills' значение и засовываем его во внутренний словарь self._skills
+        self._skills = self.initial_data.pop('skills', [])  # из тех данных, которые прислал пользователь
+        # self.initial_data выбирает по ключу 'skills' значение и засовываем его во внутренний словарь self._skills
+        # и по умолчанию пустой список
         return super().is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):  # принимает отвалидированные(точные) данные
@@ -94,8 +95,9 @@ class VacancyUpdateSerializer(serializers.ModelSerializer):
     """метод вытаскивает все skills, прячет их от валидатора, а затем даёт пройтись по ним самостоятельно"""
 
     def is_valid(self, *, raise_exception=False):
-        self._skills = self.initial_data.pop('skills')  # из тех данных, которые прислал пользователь self.initial_data
-        # выбирает по ключу 'skills' значение и засовываем его во внутренний словарь self._skills
+        self._skills = self.initial_data.pop('skills', [])  # из тех данных, которые прислал пользователь
+        # self.initial_data выбирает по ключу 'skills' значение и засовываем его во внутренний словарь self._skills
+        # и по умолчанию пустой список
         return super().is_valid(raise_exception=raise_exception)
 
     def save(self, **kwargs):  # метод сохранения

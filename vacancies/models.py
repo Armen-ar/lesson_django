@@ -46,3 +46,4 @@ class Vacancy(models.Model):
     @property  # этот декоратор позволяет чтобы этот метод вёл себя как атрибут (поле класса)
     def username(self):
         return self.user.username if self.user else None
+

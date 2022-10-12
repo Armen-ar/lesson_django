@@ -1,13 +1,15 @@
-from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Avg, Q, F
 from django.http import JsonResponse, HttpResponse
-from django.views import View
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from amazing_hunting import settings
+from authentication.models import User
 from vacancies.models import Vacancy, Skill
+from vacancies.permissions import VacancyCreatePermission
 from vacancies.serializers import VacancyListSerializer, VacancyDetailSerializer, VacancyCreateSerializer, \
     VacancyUpdateSerializer, VacancyDestroySerializer, SkillSerializer
 
@@ -52,7 +54,7 @@ class VacancyListView(ListAPIView):  # для род. класс на ListAPIVie
                 skill_q = Q(skills__name__contains=skill)  # Q класс - это служебный класс для сбора условий фильтраций
             else:
                 skill_q |= Q(skills__name__contains=skill)  # если в Q что-то есть, то добавим через логическое
-                                                            # или '|' ещё один класс с условием
+                # или '|' ещё один класс с условием
         if skill_q:
             self.queryset = self.queryset.filter(skill_q)
         return super().get(request, *args, **kwargs)  # возвращает родительский метод, а остальное делает DRF
@@ -61,6 +63,7 @@ class VacancyListView(ListAPIView):  # для род. класс на ListAPIVie
 class VacancyDetailView(RetrieveAPIView):  # для детального вывода нужно указать обязательные атрибуты
     queryset = Vacancy.objects.all()  # список всех записей модели
     serializer_class = VacancyDetailSerializer  # из сериализации конкретная вакансия
+    permission_classes = [IsAuthenticated]  # авторизация для детального просмотра вакансий(список с пермишами-доступом)
 
 
 """декораторы не нужены, т.к. CreateAPIView уже работает как API"""
@@ -69,6 +72,7 @@ class VacancyDetailView(RetrieveAPIView):  # для детального выв�
 class VacancyCreateView(CreateAPIView):
     queryset = Vacancy.objects.all()  # список всех записей модели
     serializer_class = VacancyCreateSerializer  # из сериализации добавление вакансии
+    permission_classes = [IsAuthenticated, VacancyCreatePermission]  # сначала проверяет на аутентификацию пользователя
 
 
 class VacancyUpdateView(UpdateAPIView):  # класс наследуется от родительского класса CreateView
@@ -81,34 +85,35 @@ class VacancyDeleteView(DestroyAPIView):
     serializer_class = VacancyDestroySerializer  # из сериализации удаления вакансии
 
 
-class UserVacancyDetailView(View):
-    def get(self, request):
-        user_qs = User.objects.annotate(vacancies=Count('vacancy'))  # у модели User вызываем метод objects и чтоб
-        # сгруппировать данные у него вызываем метод annotate (он добавляет к записи дополнительную колонку,
-        # которую кладёт что он сделал). Вместо Count может быть Max, Min и т.д.
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_vacancies(request):
+    user_qs = User.objects.annotate(vacancies=Count('vacancy'))  # у модели User вызываем метод objects и чтоб
+    # сгруппировать данные у него вызываем метод annotate (он добавляет к записи дополнительную колонку,
+    # которую кладёт что он сделал). Вместо Count может быть Max, Min и т.д.
 
-        paginator = Paginator(user_qs, settings.TOTAL_ON_PAGE)  # переменная это объект класса Paginator,
-        # в которую передаём аргумент сгруппированные данные и константу, дописанную в setting.py
-        page_number = request.GET.get('page', 1)  # это номер страницы, который передал пользователь
-        # по умолчанию 1 стр.
-        page_object = paginator.get_page(page_number)  # у пагинатора вызываем метод get_page и туда передаём номер
+    paginator = Paginator(user_qs, settings.TOTAL_ON_PAGE)  # переменная это объект класса Paginator,
+    # в которую передаём аргумент сгруппированные данные и константу, дописанную в setting.py
+    page_number = request.GET.get('page', 1)  # это номер страницы, который передал пользователь
+    # по умолчанию 1 стр.
+    page_object = paginator.get_page(page_number)  # у пагинатора вызываем метод get_page и туда передаём номер
 
-        users = []  # пустой список пользователей
-        for user in page_object:
-            users.append({
-                'id': user.id,
-                'name': user.username,
-                'vacancies': user.vacancies
-            })
+    users = []  # пустой список пользователей
+    for user in page_object:
+        users.append({
+            'id': user.id,
+            'name': user.username,
+            'vacancies': user.vacancies
+        })
 
-        response = {
-            'items': users,
-            'num_pages': paginator.num_pages,
-            'total': paginator.count,
-            'avg': user_qs.aggregate(avg=Avg('vacancies'))['avg']  # выводит среднее значение по колонке
-        }
+    response = {
+        'items': users,
+        'num_pages': paginator.num_pages,
+        'total': paginator.count,
+        'avg': user_qs.aggregate(avg=Avg('vacancies'))['avg']  # выводит среднее значение по колонке
+    }
 
-        return JsonResponse(response)
+    return JsonResponse(response)
 
 
 class VacancyLikeView(UpdateAPIView):
