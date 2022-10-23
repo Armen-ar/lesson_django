@@ -1,6 +1,8 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from vacancies.models import Vacancy, Skill
+from vacancies.validations import NotInStatusValidator
 
 
 class SkillSerializer(serializers.ModelSerializer):
@@ -49,6 +51,15 @@ class VacancyCreateSerializer(serializers.ModelSerializer):
         many=True,  # их много
         queryset=Skill.objects.all(),  # значения этого поля будут из queryset....
         slug_field='name'  # название поля, откуда берётся значение
+    )
+    slug = serializers.CharField(
+        max_length=50,
+        validators=[UniqueValidator(queryset=Vacancy.objects.all())]  # достаёт все вакансии и среди них ищет
+        # вакансию с таким же slug-ом. Но можно по вхождению (lookup='contains')). Может быть несколько slug-ов
+    )
+    status = serializers.CharField(
+        max_length=6,
+        validators=[NotInStatusValidator('closed')]  # статус не должен быть закрытым
     )
 
     class Meta:

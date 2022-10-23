@@ -1,6 +1,15 @@
+from datetime import date
+
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from authentication.models import User
+
+
+def check_date_not_past(value: date):
+    if value < date.today():
+        raise ValidationError(f"{value} is in the past.")
 
 
 class Skill(models.Model):
@@ -27,13 +36,16 @@ class Vacancy(models.Model):
     status = models.CharField(max_length=6, choices=STATUS, default="draft")  # исходя из количества символов в самой
     # длинной строке 'closed' и 'choices' это выбирать из списка константы и по умолчанию 'draft' т.е. будут
     # создаваться со статусом Черновик
-    created = models.DateField(auto_now_add=True)  # дата создания, атрибут 'auto_now_add'(поставь текущее значение в
-    # момент создания)
+    created = models.DateField(auto_now_add=True)  # дата создания, атрибут 'auto_now_add'(поставь текущее значение
+    # в момент создания)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)  # обязательный атрибут модель User и при
     # удалении записи User каскадом удалить записи models.CASCADE
     skills = models.ManyToManyField(Skill)
 
     likes = models.IntegerField(default=0)
+    min_experience = models.IntegerField(null=True, validators=[MinValueValidator(0)])  # валидатор, мин. стаж = 0
+    updated_at = models.DateField(null=True, validators=[check_date_not_past])  # дата создания может быть пустым,
+    # но валидатор это массив из метода, который определён выше и не вызовов
 
     class Meta:
         verbose_name = 'Вакансия'  # как будем называть нашу модель в единственном числе
@@ -46,4 +58,3 @@ class Vacancy(models.Model):
     @property  # этот декоратор позволяет чтобы этот метод вёл себя как атрибут (поле класса)
     def username(self):
         return self.user.username if self.user else None
-
